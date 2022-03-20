@@ -1,87 +1,128 @@
 package ch.bytecrowd.markupeditor.web.rest;
 
 import ch.bytecrowd.markupeditor.domain.MarkdownFile;
-import io.quarkus.hibernate.reactive.panache.common.runtime.ReactiveTransactional;
+import ch.bytecrowd.markupeditor.jwt.rest.AuthenticationResource;
+import ch.bytecrowd.markupeditor.web.rest.dto.MarkdownFileWithOutContent;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.panache.common.Parameters;
-import io.smallrye.mutiny.Multi;
-import io.smallrye.mutiny.Uni;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+import javax.transaction.Transactional;
 import javax.validation.Valid;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
 import java.net.URI;
 import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Path(FileResource.API_PATH)
+@RolesAllowed({AuthenticationResource.ROLE_USER})
 public class FileResource {
 
     static final Logger LOG = LoggerFactory.getLogger(FileResource.class);
     public static final String API_PATH = "/api/files";
 
-    @GET
-    public Multi<MarkdownFile> findAll(@QueryParam("query") String query) {
-        LOG.info("GET request to {} with query={}" , API_PATH, query);
-        if (query == null || query.isBlank()) {
-            return MarkdownFile.findAll().stream();
-        }
-        return MarkdownFile.find(
-                "from MarkdownFile mdf where lower(mdf.name) like '%' || lower(:query) || '%'",
-                Parameters.with("query", query)
-        ).stream();
+    private final JsonWebToken jwt;
+
+    @Inject
+    public FileResource(JsonWebToken jwt) {
+        this.jwt = jwt;
     }
 
+    @Transactional
+    @GET
+    public List<MarkdownFileWithOutContent> findAll(@QueryParam("query") String query, @QueryParam("tags") List<String> tags) {
+        LOG.info("GET request to {} with query={} and tags=" , API_PATH, query, tags);
+        PanacheQuery<MarkdownFile> files;
+        if (query.isBlank() && tags.isEmpty()) {
+            files = MarkdownFile.find(
+                    " select distinct mdf " +
+                            "from " +
+                            "   MarkdownFile mdf " +
+                            "       left join fetch mdf.tags tags " +
+                            "where " +
+                            "   mdf.creator = :creator",
+                    Parameters.with("creator", jwt.getName()));
+        } else {
+            files = MarkdownFile.find(
+                    " select distinct mdf " +
+                            "from " +
+                            "   MarkdownFile mdf " +
+                            "       left join fetch mdf.tags tags " +
+                            "where " +
+                            "   mdf.creator = :creator" +
+                            "   AND (:query is null or lower(mdf.name) like '%' || lower(:query) || '%')" +
+                            "   AND (:tags is null or tags in :tags)",
+                    Parameters.with("query", query.isBlank() ? null : query)
+                            .and("tags", tags.isEmpty() ? null : tags)
+                            .and("creator", jwt.getName())
+            );
+        }
+        return files.list().stream()
+                .map(file -> MarkdownFileWithOutContent.from(file))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
     @GET
     @Path("/{id}")
-    public Uni<MarkdownFile> findOne(UUID id) {
+    public MarkdownFile findOne(@PathParam("id") UUID id) {
         LOG.info("GET request to {}/{}" , API_PATH, id);
 
         LOG.info("JDBC_DATABASE_URL: {}",  System.getenv("JDBC_DATABASE_URL"));
         LOG.info("DATABASE_URL: {}",  System.getenv("DATABASE_URL"));
-        return MarkdownFile.findById(id);
+        Optional<MarkdownFile> file = MarkdownFile.findByIdOptional(id);
+        return file.orElseThrow(NotFoundException::new);
     }
 
-    @ReactiveTransactional
+    @Transactional
     @POST
-    public Uni<Response> create(@Valid MarkdownFile file) {
+    public Response create(@Valid MarkdownFile file) {
         LOG.info("POST request to {} with file: {}" , API_PATH, file);
             file.id(null)
-                .creator("anonymous")
+                .creator(jwt.getName())
                 .createDateTime(ZonedDateTime.now())
-                .editor("anonymous")
+                .editor(jwt.getName())
                 .editDateTime(ZonedDateTime.now());
-            Uni<MarkdownFile> saved = file.persist();
-            return saved.map(f -> Response.created(URI.create("/api/files/" + f.getId())).entity(f).build());
+            file.persist();
+            return Response.created(URI.create("/api/files/" + file.getId())).entity(file).build();
     }
 
-    @ReactiveTransactional
+    @Transactional
     @PUT
-    public Uni<Response> update(@Valid MarkdownFile file) {
+    public Response update(@Valid MarkdownFile file) {
         LOG.info("PUT request to {} with file: {}" , API_PATH, file);
-                Uni<MarkdownFile> fromDb = MarkdownFile
-                    .findById(file.getId());
+                Optional<MarkdownFile> fromDb = MarkdownFile
+                    .findByIdOptional(file.getId());
                 return fromDb
-                    .invoke(f -> f
+                    .map(f -> f
                             .content(file.getContent())
                             .name(file.getName())
                             .directory(file.getDirectory())
                             .tags(file.getTags())
                             .editDateTime(ZonedDateTime.now())
-                            .editor("anonymous")
-                    )
-                    .flatMap(f -> f.persist())
-                    .map(f -> Response.ok(f).build());
+                            .editor(jwt.getName())
+                    ).stream().peek(f -> f.persist())
+                    .map(f -> Response.ok(f).build())
+                    .findFirst()
+                    .orElseThrow(NotFoundException::new);
     }
 
-    @ReactiveTransactional
+    @Transactional
     @DELETE
     @Path("{id}")
-    public Uni<Response> delete(UUID id) {
+    public Response delete(@PathParam("id") UUID id) {
         LOG.info("DELETE request to {}/{}" , API_PATH, id);
-        return MarkdownFile.deleteById(id).map(b -> Response.accepted().build());
+        MarkdownFile.deleteById(id);
+        return Response.accepted().build();
     }
 }

@@ -1,0 +1,33 @@
+.nav-wrapper {
+    margin-left: 1em;
+}
+
+.primary-color {
+    color: teal;
+}
+.danger-color {
+    color: #d0235a;
+}
+
+#progress-bar {
+    position: absolut;
+    top: -10px;
+}
+#md-editor {
+    display: none;
+}
+
+.title {
+    font-size: 22px !important;
+    line-height: 1.5em !important;
+}
+.audit-infos {
+    font-family: monospace;
+    font-size: 0.8em;
+    line-height: 1rem;
+}
+
+.chip {
+    color: white;
+    background: #009688;
+}

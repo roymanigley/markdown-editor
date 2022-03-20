@@ -1,4 +1,18 @@
+
 # markdown-editor Project
+
+- PROD: https://royman-mde.herokuapp.com/
+- login: royman-mde@protonmail.com
+
+**run locally**:
+
+    ./mvnv quarkus:dev
+    
+    http://localhost:8080
+    login: admin
+    password: admin
+
+# Quarkus Default
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
 

@@ -19,7 +19,7 @@ class EditorController {
         } else {
             this.selected.name = name;
             this.selected.content = content;
-        }
+        }0
         this.selected = await this.service.save(this.selected);
     }
 }
@@ -29,8 +29,8 @@ class FileListController {
         this.service = service;
     }
 
-    async getAllFiles(query) {
-        return this.service.findAll(query);
+    async getAllFiles(query, tags) {
+        return this.service.findAll(query, tags);
     }
 
     async deleteOne(id) {
@@ -40,20 +40,20 @@ class FileListController {
 
 
 class LoginController {
-    constructor(service = new LoginService()) {
-        this.service = service;
+    constructor(client = new LoginClient()) {
+        this.client = client;
     }
 
     async login(username, password) {
-        return {};
+        return this.client.login(username, password);
     }
 
     async logout() {
-        return {};
+        return this.client.logout();
     }
 
     async isLoggeding() {
-        this.service.isLoggeding();
+        return this.client.isLoggeding();
     }
 }
 
@@ -64,8 +64,8 @@ class FileService {
         this.client = client;
     }
 
-    async findAll(query) {
-        return this.client.findAll(query);
+    async findAll(query, tags) {
+        return this.client.findAll(query, tags);
     }
 
     async findOne(id) {
@@ -124,18 +124,24 @@ class FileClient {
         this.baseUrl = baseUrl;
     }
 
-    async findAll(query = '') {
-        const response = await fetch(this.baseUrl + '/api/files?query=' + encodeURIComponent(query));
+    async findAll(query = '', tags = []) {
+        tags = tags.map(tag => encodeURIComponent(tag)).join(",")
+        tags = tags ? '&tags=' + tags : '';
+        const response = await fetch(this.baseUrl + '/api/files?query=' + encodeURIComponent(query) + tags);
+        ResponseHandler.handleResponse(response);
         return response.json();
     }
 
     async findOne(id) {
         const response = await fetch(this.baseUrl + '/api/files/' + id);
+        ResponseHandler.handleResponse(response);
         return response.json();
     }
 
     async deleteOne(id) {
-        return fetch(this.baseUrl + '/api/files/' + id, { method: "DELETE"});
+        const response = await fetch(this.baseUrl + '/api/files/' + id, { method: "DELETE"});
+        ResponseHandler.handleResponse(response);
+        return response;
     }
 
     async create(file) {
@@ -149,6 +155,7 @@ class FileClient {
                 },
                 body: JSON.stringify(file)
             });
+        ResponseHandler.handleResponse(response);
         return response.json();
     }
 
@@ -162,10 +169,24 @@ class FileClient {
                 },
                 body: JSON.stringify(file)
             });
+        ResponseHandler.handleResponse(response);
         return response.json();
     }
+
 }
 
+class ResponseHandler {
+
+    static handleResponse(response) {
+        ResponseHandler.handle401(response);
+    }
+
+    static handle401(response) {
+        if (response.status === 401) {
+            document.location.href = "/login.html";
+        }
+    }
+}
 
 /* CLIENT */
 
@@ -175,27 +196,62 @@ class LoginClient {
     }
 
     async  login(login, password) {
-         return fetch(
-             this.baseUrl + '/api/auth/login',
+         const response = await fetch(
+             this.baseUrl + '/api/auth/login?login=' + encodeURIComponent(login) + '&password=' + encodeURIComponent(password),
              {
-                 method: 'POST',
-                 body: '?login=' + encodeURIComponent(login) + '&password' + encodeURIComponent(password)
-             }).json();
+                 method: 'POST'
+             })
+         return response.json();
      }
 
-    async logout(login, password) {
-         return await fetch(
+    async logout() {
+         const response = await fetch(
              this.baseUrl + '/api/auth/logout',
              {
                  method: 'POST'
-             }).json();
+             })
+         return response.json();
+     }
+
+    async refresh() {
+         const response = await fetch(
+             this.baseUrl + '/api/auth/refresh',
+             {
+                 method: 'POST'
+             })
+         return response.json();
      }
 
     async isLoggedin() {
         try {
-            return await fetch(this.baseUrl + '/api/auth/account')
+            const response = await fetch(this.baseUrl + '/api/auth/account');
+            ResponseHandler.handleResponse(response);
+            return response;
         } catch(ex) {
             return false;
         }
     }
 }
+
+const tryRefresh = async () => {
+    try {
+        await new LoginClient().refresh();
+        return true;
+    } catch (e) {
+        console.warn("refresh failed, logging out");
+        try {
+            await new LoginClient().logout();
+        } catch (e) {
+            console.warn("could not logout");
+        }
+        return false;
+    }
+}
+
+tryRefresh().then(async successful => {
+    if (successful) {
+        setInterval(async () => {
+            await tryRefresh();
+        }, 3 * 60000);
+    }
+});

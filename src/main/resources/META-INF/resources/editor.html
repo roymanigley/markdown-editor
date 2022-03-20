@@ -1,9 +1,18 @@
 <html>
     <head>
-        <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+        <!--Import Google Icon Font-->
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        <!-- Compiled and minified CSS -->
+        <link rel="stylesheet" href="css/materialize.min.css">
+        <link rel="stylesheet" href="css/easymde.min.css">
+        <link rel="stylesheet" href="css/styles.css">
+
     </head>
 
     <body>
+        <div id="progress-bar" class="progress">
+            <div class="indeterminate"></div>
+        </div>
         <textarea id="md-editor"
             rows="1">
         </textarea>
@@ -16,7 +25,8 @@
         });
 
         </script>
-        <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+        <script src="js/easymde.min.js"></script>
+        <script src="js/materialize.min.js"></script>
         <script src="js/api.js"></script>
         <script src="js/editor-view.js"></script>
     </body>

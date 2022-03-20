@@ -2,53 +2,66 @@ package ch.bytecrowd.markupeditor.web.rest;
 
 import ch.bytecrowd.markupeditor.domain.MarkdownFile;
 import ch.bytecrowd.markupeditor.domain.MarkdownImage;
-import io.quarkus.hibernate.reactive.panache.common.runtime.ReactiveTransactional;
-import io.smallrye.mutiny.Uni;
-import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
-import org.jboss.resteasy.reactive.MultipartForm;
+import ch.bytecrowd.markupeditor.jwt.rest.AuthenticationResource;
+import ch.bytecrowd.markupeditor.web.rest.dto.FileUploadForm;
+import org.jboss.resteasy.annotations.providers.multipart.MultipartForm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
+import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
 @Path(ImageResource.API_PATH)
+@RolesAllowed({AuthenticationResource.ROLE_USER})
 public class ImageResource {
 
     static final Logger LOG = LoggerFactory.getLogger(ImageResource.class);
     public static final String API_PATH = "/api/images";
 
     @GET
+    @RolesAllowed({AuthenticationResource.ROLE_ADMIN})
+    public List<MarkdownImage> findAll() {
+        LOG.info("GET request to {}" , API_PATH);
+        return MarkdownImage.findAll().list();
+    }
+
+    @GET
     @Path("/{id}")
-    @Produces("image/jpeg")
-    public Uni<Response> findOne(UUID id) {
+    @Transactional
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    public Response findOne(@PathParam("id") UUID id) {
         LOG.info("GET request to {}/{}" , API_PATH, id);
-        Uni<MarkdownImage> image = MarkdownImage.findById(id);
-
-        return image
-                .map(img -> Response.ok(img.getContent()).header("Content-Disposition", "attachment;filename=" + "file.jpeg").build());
+        MarkdownImage image = MarkdownImage.findById(id);
+        return Response.ok(image.getContent())
+                .build();
     }
 
-    // TODO: reactive fileupload does not work
     @POST
-    @ReactiveTransactional
+    @Transactional
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Uni<Response> create(byte[] bytes) {
-        LOG.info("POST request to {} with file: {}" , API_PATH, bytes);
-        return Uni.createFrom().item(bytes)
-                .flatMap(b -> new MarkdownImage().content(b).persist())
-                .map(image -> Response.ok(image).build());
+    public Response create(@MultipartForm FileUploadForm input) {
+        LOG.info("POST request to {} with file: {}" , API_PATH, input.getData());
+        MarkdownImage image = new MarkdownImage().content(input.getData());
+        image.persist();
+        return Response.temporaryRedirect(URI.create(API_PATH + "/" + image.getId())).entity(image).build();
     }
 
-    @ReactiveTransactional
     @DELETE
+    @Transactional
     @Path("{id}")
-    public Uni<Response> delete(UUID id) {
+    @RolesAllowed({AuthenticationResource.ROLE_ADMIN})
+    public Response delete(@PathParam("id") UUID id) {
         LOG.info("DELETE request to {}/{}" , API_PATH, id);
-        return MarkdownFile.deleteById(id).map(b -> Response.accepted().build());
+        MarkdownFile.deleteById(id);
+        return Response.accepted().build();
     }
 }
+

@@ -1,13 +1,12 @@
 package ch.bytecrowd.markupeditor.domain;
 
+import ch.bytecrowd.markupeditor.web.rest.dto.MarkdownFileWithOutContent;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 import javax.persistence.*;
-import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-import java.time.ZonedDateTime;
-import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -20,6 +19,7 @@ public class MarkdownImage extends PanacheEntityBase {
     @Column(name = "mdf_content", nullable = false)
     @NotNull
     @JsonIgnore
+    @Lob
     private byte[] content;
 
     public UUID getId() {
@@ -46,6 +46,19 @@ public class MarkdownImage extends PanacheEntityBase {
     public MarkdownImage content(byte[] content) {
         this.setContent(content);
         return this;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        MarkdownImage that = (MarkdownImage) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 
     @Override
