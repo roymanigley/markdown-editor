@@ -4,6 +4,8 @@ import ch.bytecrowd.markupeditor.domain.MarkdownFile;
 import ch.bytecrowd.markupeditor.domain.MarkdownImage;
 import io.quarkus.hibernate.reactive.panache.common.runtime.ReactiveTransactional;
 import io.smallrye.mutiny.Uni;
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
+import org.jboss.resteasy.reactive.MultipartForm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

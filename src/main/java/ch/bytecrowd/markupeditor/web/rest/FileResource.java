@@ -39,6 +39,9 @@ public class FileResource {
     @Path("/{id}")
     public Uni<MarkdownFile> findOne(UUID id) {
         LOG.info("GET request to {}/{}" , API_PATH, id);
+
+        LOG.info("JDBC_DATABASE_URL: {}",  System.getenv("JDBC_DATABASE_URL"));
+        LOG.info("DATABASE_URL: {}",  System.getenv("DATABASE_URL"));
         return MarkdownFile.findById(id);
     }
 
