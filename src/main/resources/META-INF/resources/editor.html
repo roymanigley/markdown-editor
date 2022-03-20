@@ -1,0 +1,23 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    </head>
+
+    <body>
+        <textarea id="md-editor"
+            rows="1">
+        </textarea>
+
+        <script>
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const editorView = new EditorView();
+            editorView.initEditor('md-editor');
+        });
+
+        </script>
+        <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+        <script src="js/api.js"></script>
+        <script src="js/editor-view.js"></script>
+    </body>
+</html>

@@ -1,0 +1,95 @@
+<html>
+<head>
+</head>
+
+<body>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <!--Import Google Icon Font-->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+</head>
+
+<body>
+
+<style>
+    .title {
+        font-size: 22px !important;
+        line-height: 1.5em !important;
+    }
+    .audit-infos {
+        font-family: monospace;
+        font-size: 0.8em;
+        line-height: 1rem;
+    }
+    .primary-color {
+        color: teal;
+    }
+    .danger-color {
+        color: #d0235a;
+    }
+    .nav-wrapper {
+        margin-left: 1em;
+    }
+</style>
+<header>
+    <nav class="teal">
+        <div class="nav-wrapper">
+            <a href="#" class="brand-logo">Markdown Files</a>
+            <ul class="right hide-on-med-and-down">
+                <li>
+                    <a class="btn-floating" href="editor.html"><i class="material-icons">add</i></a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+</header>
+<main class="container">
+    <div class="row">
+        <div class="input-field col s12">
+            <i class="material-icons prefix primary-color" onclick="doSearch()">search</i>
+            <input id="query" type="text" class="validate">
+            <label class="active" for="query">Search</label>
+        </div>
+    </div>
+    <div id="file-list-wrapper"></div>
+</main>
+
+<footer>
+
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/file-list-view.js"></script>
+<script>
+
+    const deleteOne = async (id, fileName) => {
+        fileListView.deleteOne(id, fileName)
+    }
+
+    async function doSearch() {
+        const query = document.getElementById('query').value;
+        fileListView.search(query);
+    }
+
+    document.body.addEventListener( 'keyup', function (e) {
+      if ( e.keyCode == 13 ) {
+        doSearch();
+      }
+    });
+
+    let fileListView;
+    document.addEventListener("DOMContentLoaded", async () => {
+        fileListView = new FileListView();
+        fileListView.initList();
+    });
+
+</script>
+</body>
+</html>
